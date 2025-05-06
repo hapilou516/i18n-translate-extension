@@ -1,0 +1,83 @@
+{
+  "name": "i18n-translate-extension",
+  "displayName": "i18n-translate-extension",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+		"vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "i18n-translate.translateSelection",
+        "title": "Translate Selected Text to Other Languages"
+      },
+      {
+        "command": "i18n-translate.setup",
+        "title": "Setup i18n Translation Configuration"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceExtname == .json",
+          "command": "i18n-translate.translateSelection",
+          "group": "i18n"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "i18n Translate",
+      "properties": {
+        "i18nTranslate.apiKey": {
+          "type": "string",
+          "description": "API Key for translation service"
+        },
+        "i18nTranslate.endpointId": {
+          "type": "string",
+          "description": "Endpoint ID for the model"
+        },
+        "i18nTranslate.targetLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["zh-CN", "zh-TW", "fr", "de", "it", "es", "pt-PT"],
+          "description": "Target languages for translation"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.99.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
+    "eslint": "^9.23.0",
+    "esbuild": "^0.25.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.2",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1"
+  }
+}
