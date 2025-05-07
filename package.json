@@ -14,12 +14,21 @@
   "contributes": {
     "commands": [
       {
+        "command": "i18n-translate.hello",
+        "title": "Hello World"
+      },
+      {
         "command": "i18n-translate.translateSelection",
         "title": "Translate Selected Text to Other Languages"
       },
       {
         "command": "i18n-translate.setup",
         "title": "Setup i18n Translation Configuration"
+      },
+      {
+        "command": "i18n-translate.refreshTranslationExplorer",
+        "title": "Refresh Translation Files",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -28,6 +37,30 @@
           "when": "resourceExtname == .json",
           "command": "i18n-translate.translateSelection",
           "group": "i18n"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "i18n-translate.refreshTranslationExplorer",
+          "when": "view == translationExplorer",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "i18nTranslate": [
+        {
+          "id": "translationExplorer",
+          "name": "翻译列表"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "i18nTranslate",
+          "title": "翻译管理器",
+          "icon": "resources/translate.svg"
         }
       ]
     },
@@ -78,6 +111,7 @@
     "npm-run-all": "^4.1.5",
     "typescript": "^5.8.2",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "axios": "^1.7.7"
   }
 }

@@ -1,12 +1,12 @@
-const vscode = require('vscode');
-const path = require('path');
-const fs = require('fs');
-const { translate } = require('./translate');
-const { getMissContent, setMissContent, getLanguageContent, setLanguageContent } = require('./utils');
+import * as vscode from 'vscode';
+import path from 'path';
+import fs from 'fs';
+import { translate } from './translate';
 
 // 翻译选中的文本
 async function translateSelection() {
     const editor = vscode.window.activeTextEditor;
+    console.log('editor', editor);
     if (!editor) {
         vscode.window.showErrorMessage('No active editor found');
         return;
@@ -26,15 +26,37 @@ async function translateSelection() {
     // 获取选中的文本
     const selection = editor.selection;
     const text = editor.document.getText(selection);
-
-    // 尝试解析选中的JSON文本
+    // 尝试处理选中的文本
     try {
-        const selectedJson = JSON.parse(`{${text}}`);
-        const keys = Object.keys(selectedJson);
+        let selectedJson = "";
 
-        if (keys.length === 0) {
-            vscode.window.showErrorMessage('No valid JSON key-value pairs selected');
-            return;
+        // 尝试将选中文本解析为JSON
+        try {
+            // 尝试直接解析为JSON对象
+            const parsedJson = JSON.parse(text);
+            selectedJson = JSON.stringify(parsedJson);
+        } catch (jsonError) {
+            // 如果不是有效的JSON，尝试将其转换为JSON
+            // 检查是否是key-value对格式的文本（比如 "key": "value"）
+            const keyValueRegex = /"([^"]+)":\s*"([^"]+)"/g;
+            let match;
+            const keyValuePairs: Record<string, string> = {};
+            let hasMatches = false;
+
+            while ((match = keyValueRegex.exec(text)) !== null) {
+                hasMatches = true;
+                const key = match[1];
+                const value = match[2];
+                keyValuePairs[key] = value;
+            }
+
+            if (hasMatches) {
+                selectedJson = JSON.stringify(keyValuePairs);
+            } else {
+                // 如果找不到key-value对，则将整个文本作为一个值
+                vscode.window.showErrorMessage('Selected text is not a valid JSON or key-value pairs');
+                return;
+            }
         }
 
         // 获取配置
@@ -56,7 +78,7 @@ async function translateSelection() {
         }, async (progress) => {
 
             // 翻译到每种目标语言
-            for (const lang of targetLanguages) {
+            for (const lang of targetLanguages as string[]) {
                 progress.report({ message: `Translating to ${lang}...` });
 
                 // 构建目标文件路径
@@ -69,7 +91,7 @@ async function translateSelection() {
                     try {
                         const fileContent = fs.readFileSync(targetFilePath, 'utf8');
                         targetContent = JSON.parse(fileContent);
-                    } catch (err) {
+                    } catch (err: any) {
                         vscode.window.showErrorMessage(`Error reading target file ${targetFileName}: ${err.message}`);
                         continue;
                     }
@@ -77,30 +99,31 @@ async function translateSelection() {
 
                 // 翻译选中的内容
                 const [translatedContent, error] = await translate({
-                    API_KEY: apiKey,
-                    ENDPOINT_ID: endpointId,
+                    API_KEY: apiKey as string,
+                    ENDPOINT_ID: endpointId as string,
                     SystemContent: getSystemPrompt(),
                     lang,
                     translateContent: selectedJson
                 });
-
                 if (error) {
                     vscode.window.showErrorMessage(`Translation error for ${lang}: ${error}`);
                     continue;
                 }
 
                 // 合并翻译结果
-                Object.assign(targetContent, translatedContent);
+                if (translatedContent) {
+                    Object.assign(targetContent, translatedContent);
 
-                // 写入目标文件
-                fs.writeFileSync(targetFilePath, JSON.stringify(targetContent, null, 2), 'utf8');
+                    // 写入目标文件
+                    fs.writeFileSync(targetFilePath, JSON.stringify(targetContent, null, 2), 'utf8');
+                }
             }
 
             vscode.window.showInformationMessage('Translation completed!');
         });
 
-    } catch (err) {
-        vscode.window.showErrorMessage(`Invalid JSON format: ${err.message}`);
+    } catch (err: any) {
+        vscode.window.showErrorMessage(`Error processing text: ${err.message}`);
     }
 }
 
@@ -113,7 +136,7 @@ async function setupConfiguration() {
 
     if (apiKey) {
         const config = vscode.workspace.getConfiguration('i18nTranslate');
-        await config.update('apiKey', apiKey, vscode.ConfigurationTarget.Global);
+        await config.update('apiKey', apiKey, vscode.ConfigurationTarget.Workspace);
     }
 
     const endpointId = await vscode.window.showInputBox({
@@ -123,7 +146,7 @@ async function setupConfiguration() {
 
     if (endpointId) {
         const config = vscode.workspace.getConfiguration('i18nTranslate');
-        await config.update('endpointId', endpointId, vscode.ConfigurationTarget.Global);
+        await config.update('endpointId', endpointId, vscode.ConfigurationTarget.Workspace);
     }
 
     vscode.window.showInformationMessage('Configuration updated!');
@@ -143,11 +166,25 @@ function getSystemPrompt() {
      1. 语言简码的关系如下 en->English,zh-CN->Chinese (Simplified),zh-TW->Chinese (Traditional),fr->French,de->German,it->Italian,es->Spanish,pt-PT->Portuguese (Portugal)
   3. 确保翻译的准确性和流畅性，符合翻译语言的表达习惯。    
   4. 对于一些专业术语或特定语境下的词汇，要进行恰当的翻译，不能出现歧义。   
-  5.  严格按照参考实例的格式输入与输出
+  5. 只输出纯JSON格式，不要有任何多余的解释或文字。
+  6. 输出的JSON格式必须是有效的可解析的JSON，不能包含任何非JSON内容。
+  
+  #输出格式要求
+  必须只返回一个合法的JSON对象，不包含其他任何内容。例如：
+  {"key1":"翻译后的值1","key2":"翻译后的值2"}
+  
+  #参考示例    
+  示例 1：    
+  输入：{"login":"Login"} zh-CN
+  输出：{"login":"登录"}
+      
+  示例 2：    
+  输入：{"login":"Login","register":"Register"} fr
+  输出：{"login":"Connexion","register":"S'inscrire"}
   `;
 }
 
-module.exports = {
+export {
     translateSelection,
     setupConfiguration
 };
