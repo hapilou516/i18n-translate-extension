@@ -20,6 +20,7 @@ async function translate({
     lang
 }: TranslateParams): Promise<TranslateResult> {
     try {
+        console.log('translateContent 11111111', translateContent);
         const res = await axios({
             method: "post",
             url: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',

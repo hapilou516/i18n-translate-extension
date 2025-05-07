@@ -34,7 +34,7 @@
     "menus": {
       "editor/context": [
         {
-          "when": "resourceExtname == .json",
+          "when": "resourceExtname == .json || resourceExtname == .ts",
           "command": "i18n-translate.translateSelection",
           "group": "i18n"
         }
